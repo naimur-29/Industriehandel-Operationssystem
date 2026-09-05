@@ -63,6 +63,7 @@ Use an architecture decision record when the explanation no longer fits comforta
 | D-017 | Local development topology | Proposed | `[fill in]` | `[link]` | | |
 | D-018 | CI quality gates | Proposed | `[fill in]` | `[link]` | | |
 | D-019 | Later VPS deployment | Deferred | `[fill in later]` | `[link]` | | |
+| D-020 | Git and change management | Proposed for CP-00 review | Short-lived checkpoint branches and reviewed PRs | [Policy](#28-git-and-change-management) | 2026-09-05 | Project owner |
 
 ## 3. Frontend framework
 
@@ -832,7 +833,7 @@ Fit: CI invokes the same named tasks developers run locally, reducing shell dupl
 
 Blocking vulnerability policy: `[fill in severity, exploitability, exception owner, and expiry]`
 
-Branch protection and review policy: `[link]`
+Branch protection and review policy: [Git and change management](#28-git-and-change-management). Record verified hosting settings during CP-00b and extend required checks when CI jobs exist.
 
 ## 22. Later VPS deployment
 
@@ -1103,9 +1104,22 @@ Completion date and reviewer: `[fill in]`
 - [ ] Initial permission matrix reviewed.
 - [ ] Threat model started.
 - [ ] Frontend, backend module, persistence, session, test, and local-topology decisions recorded.
-- [ ] CI proves a minimal integrated path.
+- [ ] Git workflow reviewed and actual repository controls recorded.
 
-### Before each slice merges
+### At walking-skeleton completion
+
+- [ ] CI proves a minimal integrated path.
+- [ ] Documented local startup connects frontend, backend, PostgreSQL, and migrations.
+
+### Before each checkpoint merges
+
+- [ ] Checkpoint scope, review evidence, and PR are linked.
+- [ ] The human has accepted the reviewed implementation revision.
+- [ ] Applicable checks pass on the final revision; new behavior changes receive another review.
+- [ ] Existing behavior still works and incomplete features are not presented as finished.
+- [ ] Affected design records are updated in the same change.
+
+### Before each slice is accepted
 
 - [ ] Slice sheet complete.
 - [ ] Acceptance examples do not reproduce the production algorithm.
@@ -1156,3 +1170,128 @@ These product decisions are already made. Do not reopen them as technology prefe
 - [x] VPS deployment remains deferred.
 
 If implementation evidence forces one of these to change, update the PRD and create an ADR. Do not let the code silently make the decision.
+
+## 28. Git and change management
+
+### 28.1 Scope and decision status
+
+D-020 proposes the following workflow for human review in CP-00. It covers code, tests, migrations, configuration, and documentation throughout the project. Repository settings remain unverified until CP-00b records them. Writing this policy does not configure hosting or authorize a release.
+
+The project has one human maintainer reviewing Codex's work and no maintained production release lines. Use short-lived branches from `main`, one checkpoint per pull request, and squash merging as the proposed default. This follows the branch-and-review approach described in [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). The checkpoint granularity and merge strategy are project choices.
+
+| Option | Decision rationale |
+| --- | --- |
+| Short-lived branches and reviewed PRs | Proposed. Fits small changes and frequent human review. |
+| Long-lived `develop` and release branches | Defer. Introduces integration work without a current need to maintain several released versions. |
+| Direct implementation commits to `main` | Reject for normal development. Removes the separate review step this project requires. |
+
+Revisit the choice when several developers regularly work together, deployment needs stabilization periods, or supported releases need independent fixes. Application module architecture and Git branching are separate decisions.
+
+### 28.2 Branches and commits
+
+| Item | Project convention |
+| --- | --- |
+| Default branch | `main`; keep existing delivered behavior working |
+| Task branch | `<type>/cp-<id>-<short-description>`, for example `feat/cp-31-create-customer` |
+| Types | `feat`, `fix`, `docs`, `test`, `refactor`, `build`, `ci`, or `chore` |
+| Commit subject | `<type>: <concrete change> [CP-NN]` |
+| Example | `feat: create customer through HTTP [CP-31]` |
+| PR title | `CP-31: Create and retrieve a customer` |
+| Language | English code identifiers, commits, PRs, and engineering documents; German-first product text with English translations |
+| Merge | Squash the accepted checkpoint into one understandable change on `main` |
+
+Use UTF-8 and repository-managed line-ending and editor conventions. Commit wrappers, migrations, and dependency lockfiles. Exclude credentials, generated build output, local databases, IDE user state, and test traces containing sensitive values. Do not rewrite unrelated files just to apply formatting.
+
+Inspect the working tree before switching branches or staging. Preserve existing user changes and stage only the checkpoint's files or hunks. Do not reset, discard, or stash unrelated work without an explicit reason and authorization.
+
+Commit coherent work during implementation. Record the failing and passing TDD runs in review evidence; separate failing-test commits are optional. Never merge a deliberately broken state to prove TDD. Push task branches under the agreed session authorization so remote review and backup can occur.
+
+### 28.3 Pull requests and human review
+
+A PR contains the checkpoint ID, concrete behavior change, requirement references, verification commands and results, the review-record link, and relevant limitations. Include screenshots only when they help inspect UI behavior. Keep unrelated cleanup in another checkpoint.
+
+Codex prepares and checks the change. The human reviews the diff, expected outcomes, test quality, affected permissions, migrations, and documentation. Codex cannot approve its own output on the human's behalf. Mark the checkpoint accepted only after the human accepts it and record the reviewed commit.
+
+GitHub does not allow PR authors to approve their own PRs. If Codex operates through the maintainer's account, record that maintainer's review explicitly in the review record or PR discussion. Do not require an unavailable second account or describe self-review as independent peer review. When a second human joins, require their approving review and configure stale approval dismissal. See [GitHub's review rules](https://docs.github.com/en/pull-requests/how-tos/review-pull-requests/approving-a-pull-request-with-required-reviews).
+
+### 28.4 Repository controls and integration
+
+Configure the following where the actual hosting plan supports them. Record unavailable controls and the manual procedure used instead; never imply that a written rule is enforced by the server.
+
+- Require PRs for changes to `main` and prevent force pushes and deletion of that branch.
+- Require applicable CI checks after their jobs exist. Run application checks on PRs and on the integrated `main` revision.
+- Require review discussions to be resolved before merge.
+- Use the solo-maintainer arrangement above until independent review is available. Do not set an impossible approval requirement and then routinely bypass it.
+- Keep repository and CI permissions limited to their work. Protect deployment credentials separately when deployment enters scope.
+
+Before merge, incorporate current `main` when necessary, resolve conflicts, and rerun affected checks. Avoid rewriting published branch history by default. Never force-push a shared branch as routine cleanup. A code change after acceptance requires human review again; checkbox and evidence-only updates must be identified as such.
+
+After acceptance and passing checks, the authorized maintainer squash-merges the PR. Record the merged commit and PR in the review record, update the checkpoint register, sync local `main`, and delete the merged task branch once its work is retained. Integration does not itself authorize deployment.
+
+During bootstrap, use direct documentation checks until CI exists. Record local evidence honestly. External CI or protection verification stays pending if access is unavailable. Once a gate is configured, a failing gate blocks merge; do not bypass it to make progress appear complete.
+
+### 28.5 Corrections, releases, and recovery
+
+Correct an accepted change in a new checkpoint and PR. Use a revert commit when undoing an integrated change; preserve history and link the reason. Database changes need a forward migration or a separately reviewed recovery procedure. Reverting application code does not undo persisted data.
+
+Tag accepted runnable milestones with annotated tags, starting with `v0.1.0` for the customer tracer if no release has used that version. Record delivered behavior and known limitations in release notes. Do not tag every checkpoint or overwrite published tags. Select a public version compatibility policy before an external API or deployment depends on it.
+
+Include repository recovery in the development process. Record the owner, independent backup location, backup schedule, and a tested restore procedure in CP-00b. Back up all required refs and separately account for PR discussions, issues, settings, and any large-file storage; an ordinary clone does not preserve all hosting metadata. Keep application database and invoice-artifact recovery in their separately planned milestones.
+
+### 28.6 Control record
+
+| Control | Current evidence |
+| --- | --- |
+| D-020 human acceptance | Pending CP-00 |
+| Contribution and PR templates | Pending CP-00a |
+| Hosting capabilities and default-branch protection | Pending CP-00b |
+| Review arrangement and merge authorization | Pending CP-00 |
+| Repository backup and recovery evidence | Pending CP-00b |
+| Initial required CI checks | Pending CP-18 |
+| Full first-slice CI checks | Pending CP-46 |
+
+## 29. Engineering practices and German context
+
+### 29.1 How to use German references
+
+There is no single national Git branching model or application architecture to select. This project records the source, applicable scope, and evidence for each practice. A preference such as squash merging is a project convention, not a German standard or a legal obligation.
+
+The BSI's CON.8 software-development guidance addresses development testing and controlled, traceable, reversible source changes, including version-control backups. Use these concerns to review this project's process. See the [BSI CON.8 reference, edition 2021](https://www.bsi.bund.de/SharedDocs/Downloads/DE/BSI/Grundschutz/IT-GS-Kompendium_Einzel_PDFs_2021/03_CON_Konzepte_und_Vorgehensweisen/CON_8_Software_Entwicklung_Edition_2021.pdf?__blob=publicationFile&v=2) and the [BSI edition 2023 publication page](https://www.bsi.bund.de/SharedDocs/Downloads/DE/BSI/Grundschutz/IT-GS-Kompendium_Einzel_PDFs_2023/03_CON_Konzepte_und_Vorgehensweisen/CON_8_Software_Entwicklung_Edition_2023.html). These dated references are engineering input, not evidence that the project satisfies the current complete IT-Grundschutz framework.
+
+Reference review date: 2026-09-05. Recheck applicable editions and requirements before making compliance claims or preparing real commercial use. The PRD's existing legal, privacy, invoice, and accessibility verification requirements still apply. Do not expand this portfolio into a certification project without a separate scope decision.
+
+### 29.2 Architecture documentation with arc42
+
+Use arc42 as a review structure for the existing documents. Its template covers goals, constraints, context, solution strategy, building blocks, runtime and deployment views, cross-cutting concepts, decisions, quality, risks, and terminology. It allows adaptation to the project. See the [official German arc42 overview](https://arc42.de/overview/).
+
+Keep one authoritative record for each topic. Link existing material instead of creating a second architecture book with duplicate content.
+
+| arc42 topic | Project record |
+| --- | --- |
+| Goals and constraints | PRD sections 1 through 7 and 11; this workbook's project record |
+| Context and boundaries | Context diagrams and DFDs in the artifact register |
+| Solution strategy and building blocks | Application architecture, package structure, and module map |
+| Runtime behavior | Slice examples, transition tables, and sequence diagrams |
+| Deployment | Local topology and container diagram; VPS view remains deferred |
+| Cross-cutting concepts | Authentication, permissions, localization, errors, persistence, audit, and observability |
+| Architecture decisions | D-001 onward and linked ADRs |
+| Quality requirements | PRD targets and measurable quality scenarios |
+| Risks and technical debt | Risk register with owners and revisit conditions |
+| Glossary | German and English domain terms with agreed code names |
+
+Update these records as behavior changes. Use a diagram when relationships or timing need one, and keep its editable source in Git. Record missing evidence as pending rather than drawing a complete system that does not exist yet.
+
+### 29.3 Practices carried through every milestone
+
+| Concern | Project practice | Evidence |
+| --- | --- | --- |
+| Requirements | Link each checkpoint to agreed behavior and distinguish partial coverage | Slice record and requirement-to-test map |
+| Architecture | Record credible options, tradeoffs, and reasons when a slice needs a choice | ADRs and updated diagrams |
+| Implementation | Use behavior-driven TDD examples, negative cases, and relevant integration tests | Red/green record and CI results |
+| Review | A human reviews Codex output before acceptance; independent review is recorded only when it occurs | Reviewed commit, findings, and reviewer identity |
+| Change control | Use the Git lifecycle in section 28 for every checkpoint | Branch, PR, merge commit, and recovery record |
+| Security and privacy | Review trust boundaries, sensitive data, access controls, dependencies, and retention as applicable | Threat model, scans, and data dictionary |
+| German business behavior | Use the PRD's German wording, EUR, locale, time-zone, and synthetic-data rules | Worked examples and interface review |
+| Delivery | Prove clean startup and state limitations before calling a milestone complete | Demo guide and acceptance evidence |
+
+These are this project's selected working practices. Framework choices remain open until their decision checkpoints; neither German context nor arc42 selects React, JPA, microservices, or a particular branch naming scheme.
